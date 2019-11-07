@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Better Rupark Dev
+// @name         Better Rupark
 // @namespace    http://tampermonkey.net/
 // @version      0.6
 // @description  RP forum extensions
