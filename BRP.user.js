@@ -1,28 +1,24 @@
 // ==UserScript==
 // @name         Better Rupark
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.6
 // @description  RP forum extensions
 // @author       Wiblz
 // @include      http*://rupark.com/*
-// @exclude      http*://rupark.com/game
+// @exclude      http*://rupark.com/game*
 
+// @updateURL    https://github.com/Wiblz/Better-RP/raw/master/BRP.user.js
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_listValues
 // @grant        GM_deleteValue
+
+// @require      https://code.jquery.com/jquery-3.4.1.min.js
+// @require      https://github.com/Wiblz/Better-RP/raw/master/blacklist.js
 // ==/UserScript==
 
-let VERSION_STRING = "v0.5";
-let WHATS_NEW_URL = "https://rupark.com/topic1209735/";
-let DEBUG_MODE = false;
-let USERNAME = null;
-
-let VERSION_COLOR = "#cc7ace"
-let GREEN = "#0ed217";
-
 String.prototype.hashCode = function() {
-  var hash = 0, i, chr;
+  let hash = 0, i, chr;
   if (this.length === 0) return hash;
   for (i = 0; i < this.length; i++) {
     chr   = this.charCodeAt(i);
@@ -32,447 +28,545 @@ String.prototype.hashCode = function() {
   return hash;
 };
 
-function randomColor() {
-   return "#"+((1<<24)*Math.random()|0).toString(16);
-}
+/* Global module object */
+const BRP = (function() {
+  'use strict';
 
-function convertMonth(russianName) {
-    switch (russianName) {
-        case "января":
-            return "Jan";
-        case "февраля":
-            return "Feb";
-        case "марта":
-            return "Mar";
-        case "апреля":
-            return "Apr";
-        case "мая":
-            return "May";
-        case "июня":
-            return "Jun";
-        case "июля":
-            return "Jul";
-        case "августа":
-            return "Aug";
-        case "сентября":
-            return "Sep";
-        case "октября":
-            return "Oct";
-        case "ноября":
-            return "Nov";
-        case "декабря":
-            return "Dec";
-        default:
-            return null;
+  const BRP = {};
+
+  BRP.VERSION_STRING = 'v0.6';
+  BRP.WHATS_NEW_URL = 'https://rupark.com/topic1211680/';
+  BRP.VERSION_COLOR = '#ec4583';
+  BRP.DEBUG_MODE = false;
+
+  BRP.GREEN = '#0ed217';
+  BRP.RED = '#8a2424';
+  BRP.CURRENT_YEAR = '2019';
+
+
+  BRP.User = {};
+
+  BRP.User.nickname = null;
+  BRP.User.banned = false;
+
+  BRP.User.detectUser = function() {
+    this.nickname = $('.userpic > a').first().attr('title');
+    this.nicknameHash = this.nickname.hashCode();
+
+    if (banned.has(this.nicknameHash)) {
+      GM_setValue('banned', '1');
     }
-}
 
-function parseDate(str) {
+    this.banned = GM_getValue('banned') != null;
+  }
+
+
+  BRP.Dates = {};
+
+  BRP.Dates.convertMonth = function(russianName) {
+    switch (russianName) {
+      case 'января':
+        return 'Jan';
+      case 'февраля':
+        return 'Feb';
+      case 'марта':
+        return 'Mar';
+      case 'апреля':
+        return 'Apr';
+      case 'мая':
+        return 'May';
+      case 'июня':
+        return 'Jun';
+      case 'июля':
+        return 'Jul';
+      case 'августа':
+        return 'Aug';
+      case 'сентября':
+        return 'Sep';
+      case 'октября':
+        return 'Oct';
+      case 'ноября':
+        return 'Nov';
+      case 'декабря':
+        return 'Dec';
+      default:
+        return null;
+    }
+  }
+
+  BRP.Dates.parseDate = function(str) {
     let parts = str.replace(/,/g, '').split(' ');
 
     // "сегодня", "вчера" or something else indefinite
     if (isNaN(parts[0])) {
-        return new Date();
+      return new Date();
     }
 
-    parts[1] = convertMonth(parts[1]);
+    parts[1] = this.convertMonth(parts[1]);
     if (isNaN(parts[2])) {
-        parts.push(parts[2]);
-        parts[2] = "2019";
+      parts.push(parts[2]);
+      parts[2] = BRP.CURRENT_YEAR;
     }
 
     return new Date(parts.join(' '));
-}
+  }
 
-function wrapRelevantText() {
-    for (var node of document.getElementsByClassName("txt")) {
-        var nodes = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, null);
-        var textNode;
-        while (textNode = nodes.nextNode()) {
-            var parent = textNode.parentNode;
-            var text = textNode.nodeValue;
 
-            var spanWrapper = document.createElement("span");
-            spanWrapper.innerText = text;
-            spanWrapper.className = "relevant-text";
+  BRP.Ignore = {};
 
-            textNode.nodeValue = "";
-            parent.insertBefore(spanWrapper, textNode);
-        }
-    }
-}
+  BRP.Ignore.ignoredUsers = GM_listValues().filter(str => str.startsWith('ignore_'))
+                                           .map(str => str.substring(7));
 
-function modifyNavigationBar() {
-    let button = document.createElement("li");
-    let currentVersionNode = document.createElement("li");
+  BRP.Ignore.addIgnoreButton = function(nickname) {
+    let $userInfo = $('.inputform-m');
 
-    currentVersionNode.style.position = "absolute";
-    currentVersionNode.style.right = "10px";
-
-    let currentVersionLink = document.createElement("a");
-    currentVersionLink.innerText = "BRP " + VERSION_STRING;
-    currentVersionLink.setAttribute("href", WHATS_NEW_URL);
-    currentVersionLink.style.fontWeight = "bold";
-    currentVersionLink.style.color = VERSION_COLOR;
-
-    if (DEBUG_MODE) {
-        let debugClearValues = document.createElement("a");
-        debugClearValues.innerText = "Clear Data";
-        debugClearValues.setAttribute("href", "#");
-        debugClearValues.style.fontWeight = "bold";
-        debugClearValues.style.color = VERSION_COLOR;
-        debugClearValues.style.marginRight = "10px";
-
-        debugClearValues.addEventListener("click", function() {
-            for (let value of GM_listValues()) {
-                GM_deleteValue(value);
-            }
-
-            console.log("Value list cleared.");
-        });
-
-        currentVersionNode.appendChild(debugClearValues);
+    if ($userInfo.length == 0) {
+      return;
     }
 
-    currentVersionNode.appendChild(currentVersionLink);
+    let ignoreButton = $(document.createElement('a')).addClass('button')
+                                                     .css({ cursor : 'pointer' });
 
-    if (window.location.href == "https://rupark.com/all/") {
-        button.innerHTML = "<a href=\"/all/\" style= \"text-decoration: none\"><b>Все топики</b></a>";
+    if (GM_getValue('ignore_' + nickname, null) != null) {
+      ignoreButton.text('Убрать из игнора')
+                  .addClass('unignore');
     } else {
-        button.innerHTML = "<a href=\"/all/\">Все топики</a>";
+      ignoreButton.text('Добавить в игнор');
     }
 
-    let table = document.getElementsByClassName("mainmenu")[0].getElementsByTagName("ul")[0];
-    table.insertBefore(button, table.firstChild);
-    table.appendChild(currentVersionNode);
-}
+    ignoreButton.appendTo($('tr:last>:first-child', $userInfo));
 
-function addJumpToTopPanel() {
-    let panel = document.createElement("span");
+    ignoreButton.click(function() {
+      if (ignoreButton.hasClass('unignore')) {
+        GM_deleteValue('ignore_' + nickname);
+        BRP.Ignore.ignoredUsers = BRP.Ignore.ignoredUsers.filter(e => e !== nickname);       
+        ignoreButton.text('Добавить в игнор');
+      } else {
+        GM_setValue('ignore_' + nickname, 0);
+        BRP.Ignore.ignoredUsers.push(nickname);
+        ignoreButton.text('Убрать из игнора');
+      }
 
-    panel.style.cssText = "width:10%;height:100%;display:none;position:fixed;top:0;right:0;background:#222222;z-index:-999;";
-
-    panel.addEventListener("mouseover", function() { panel.style.background = "#4d4d4d" });
-    panel.addEventListener("mouseout", function() { panel.style.background = "#222222" });
-    panel.addEventListener("click", function() {
-        scroll(0,0);
-        panel.style.display = "none";
+      ignoreButton.toggleClass('unignore');
     });
+  }
 
-    window.addEventListener("scroll", function() {
-        document.scrollingElement.scrollTop == 0 ? panel.style.display = "none" : panel.style.display = "block";
-    });
+  BRP.Ignore.unignore = function(button) {
+    let row = button.parent().parent();
+    let nickname = row.find('.userNickname').first().text();
+    console.log(row, nickname);
 
-    document.getElementsByTagName("body")[0].appendChild(panel);
-}
-
-function detectUser() {
-    let userpic = document.getElementsByClassName("userpic");
-
-    if (userpic.length !=0) {
-        USERNAME = userpic[0].firstElementChild.getAttribute("title");
-    }
-}
-
-function unignore(button) {
-    let row = button.parentElement.parentElement;
-    let nickname = row.getElementsByClassName("userNickname")[0].innerText;
-
-    GM_deleteValue("ignore_" + nickname);
+    GM_deleteValue('ignore_' + nickname);
+    this.ignoredUsers = this.ignoredUsers.filter(e => e !== nickname);
     row.remove();
 
-    updateIgnoredCount(document.getElementsByClassName("tabbar")[0].lastElementChild, GM_listValues().filter(str => str.startsWith("ignore_"))
-                                                                                                     .map(str => str.substring(7)));
-}
+    $('.tabbar>').last().text(this.getIgnoreTabText());
+  }
 
-function updateIgnoredCount(tab, userList) {
-    if (userList.length != 0) {
-        tab.innerText = "Игнор (" + userList.length + ")";
+  BRP.Ignore.getIgnoreTabText = function() {
+    if (this.ignoredUsers.length != 0) {
+      return 'Игнор (' + this.ignoredUsers.length + ')';
     } else {
-        tab.innerText = "Игнор";
+      return 'Игнор';
     }
-}
+  }
 
-function addIgnoredUsersTab() {
-    let tabs = document.getElementsByClassName("tabbar")[0];
+  BRP.Ignore.addIgnoredUsersTab = function() {
+    let $tabs = $('.tabbar')
 
-    let ignoredUsersTab = document.createElement("a");
-    ignoredUsersTab.setAttribute("class", "rounded7");
-    ignoredUsersTab.setAttribute("href", "#");
+    let ignoredUsersTab = $(document.createElement('a')).addClass('rounded7')
+                                                        .attr({ href : '#' })
+                                                        .text(this.getIgnoreTabText())
+                                                        .appendTo($tabs);
 
-    let ignoredUsers = GM_listValues().filter(str => str.startsWith("ignore_"))
-                                          .map(str => str.substring(7));
+    ignoredUsersTab.click(() => {
+      if (ignoredUsersTab.hasClass('active')) {
+        return;
+      }
 
-    updateIgnoredCount(ignoredUsersTab, ignoredUsers);
+      $tabs.siblings()
+           .hide();
 
-    tabs.appendChild(ignoredUsersTab);
+      $tabs.find('.active')
+           .toggleClass('active');
+      ignoredUsersTab.addClass('active');
 
-    ignoredUsersTab.addEventListener("click", function() {
-        if (ignoredUsersTab.classList.contains("active")) {
-            return;
-        }
+      let $table = $(document.createElement('table')).addClass('grid')
+                                                     .appendTo($tabs.parent());
+      let $tbody = $(document.createElement('tbody')).appendTo($table);
 
-        var sibling = tabs.nextElementSibling;
-        while (sibling != null) {
-            sibling.style.display = "none";
-            //sibling.remove();
-            sibling = sibling.nextElementSibling;
-        }
+      for (let user of this.ignoredUsers) {
+        let $row = $(document.createElement('tr')).css('background', BRP.RED)
+                                                  .html('<td><h4 style="margin-top: 0.4em"><a href="rupark.com/user/' + user + '" class="userNickname" style="margin-left:20px">' + user + '</a></h4></td>')
+                                                  .appendTo($tbody);
 
-        for (var element of document.getElementsByClassName("rounded7 active")) {
-            element.setAttribute("class", "rounded7");
-        }
-
-        ignoredUsersTab.setAttribute("class", "rounded7 active");
-
-        let table = document.createElement("table");
-        table.setAttribute("class", "grid");
-        let tbody = document.createElement("tbody");
-        table.appendChild(tbody);
-
-        for (var user of ignoredUsers) {
-            let row = document.createElement("tr");
-            row.style.background = "#8a2424";
-
-            let buttonColumn = document.createElement("td");
-            buttonColumn.style.width = "10px";
-            let unignoreButton = document.createElement("a");
-            unignoreButton.setAttribute("class", "button block");
-            unignoreButton.innerText = "Убрать из игнора";
-            unignoreButton.addEventListener("click", function() {
-                unignore(this);
-            });
-            buttonColumn.appendChild(unignoreButton);
-
-            row.innerHTML = "<td><h4 style=\"margin-top: 0.4em\"><a href=\"rupark.com/user/" + user + "\" class=\"userNickname\" style=\"margin-left:20px\">" + user + "</a></h4></td>";
-            row.appendChild(buttonColumn);
-            tbody.appendChild(row);
-        }
-
-        tabs.parentElement.appendChild(table);
+        let $buttonColumn = $(document.createElement('td')).css('width', '10px')
+                                                           .appendTo($row);
+        let $unignoreButton = $(document.createElement('a')).addClass('button block')
+                                                            .text('Убрать из игнора')
+                                                            .css('cursor', 'pointer')
+                                                            .click(function() {
+                                                              // console.log($(this).parent().parent());
+                                                              BRP.Ignore.unignore($(this));
+                                                            })
+                                                            .appendTo($buttonColumn);
+      }
     });
-}
+  }
 
-function addIgnoreButton(nickname) {
-    let userInfo = document.getElementsByClassName("inputform-m");
+  return BRP;
+}());
 
-    if (userInfo.length != 0) {
-        let ignoreButton = document.createElement("a");
-        ignoreButton.setAttribute("class", "button");
+$(() => {
+  function randomColor() {
+    return '#'+((1<<24)*Math.random()|0).toString(16);
+  }
 
-        if (GM_getValue("ignore_" + nickname, null) != null) {
-            ignoreButton.innerText = "Убрать из игнора";
-        } else {
-            ignoreButton.innerText = "Добавить в игнор";
+  function isURL(str) {
+    return window.location.pathname.startsWith(str);
+  }
+
+  /*
+    FIX: presents situation
+  */
+  function wrapRelevantText() {
+    $('.txt').each(function(_, node) {
+      let nodes = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, null);
+      let textNode;
+      
+      while (textNode = nodes.nextNode()) {
+        let parent = textNode.parentNode;
+
+        if (/\S/.test(textNode.nodeValue) && parent.nodeName == 'DIV') {
+          let text = textNode.nodeValue;
+          let spanWrapper = document.createElement('span');
+
+          // trimming only text on presents tab
+          if (isURL('/user/') && window.location.pathname.endsWith('/presents/')) {
+            spanWrapper.innerText = text.trim();
+          } else {
+            spanWrapper.innerText = text;
+          }
+          spanWrapper.className = 'relevant-text';
+
+          textNode.nodeValue = '';
+          parent.insertBefore(spanWrapper, textNode);
         }
+      }
+    });
+  }
 
-        userInfo[0].children[0].children[0].lastElementChild.firstElementChild.append(ignoreButton);
+  //
+  function modifyNavigationBar() {
+    const $table = $('.mainmenu > ul');
+    let button = $(document.createElement('li'));
+    let currentVersionNode = $(document.createElement('li')).css({
+      position : 'absolute',
+      right : '10px'
+    }).appendTo($table);
 
-        ignoreButton.addEventListener("click", function() {
-            if (GM_getValue("ignore_" + nickname, null) != null) {
-                GM_deleteValue("ignore_" + nickname);
-                ignoreButton.innerText = "Добавить в игнор";
-            } else {
-                GM_setValue("ignore_" + nickname, 0);
-                ignoreButton.innerText = "Убрать из игнора";
-            }
+    $currentVersionLink = $(document.createElement('a')).css({
+                                                          'font-weight' : 'bold',
+                                                          'color' : BRP.VERSION_COLOR
+                                                        }).appendTo(currentVersionNode);
+
+    if (!BRP.User.banned) {
+      // link to what's new topic
+      $currentVersionLink.text('BRP ' + BRP.VERSION_STRING)
+                         .attr('href', BRP.WHATS_NEW_URL);
+    } else {
+      $currentVersionLink.text('СОСИ ХУЙ БЫДЛО')
+                         .attr('href', '#');
+
+      return;
+    }
+
+    // notification about new version
+    if (GM_getValue('version') != BRP.VERSION_STRING) {
+      $(document.createElement('span')).text('New!')
+                                       .css({
+                                          color : BRP.GREEN,
+                                          'margin-right' : '7px',
+                                          'font-size' : '12px'
+                                        }).mouseover(function() {
+                                          $(this).hide();
+                                          GM_setValue('version', BRP.VERSION_STRING);
+                                        }).prependTo(currentVersionNode);
+    }
+
+    if (BRP.DEBUG_MODE) {
+      $(document.createElement('a')).text('Clear Data')
+                                    .attr('href', '#')
+                                    .css({
+                                      'font-weight' : 'bold',
+                                      'color' : BRP.VERSION_COLOR,
+                                      'margin-right' : '10px',
+                                      'margin-left'  : '10px'
+                                    }).click(() => {
+                                      for (let value of GM_listValues()) {
+                                        GM_deleteValue(value);
+                                      }
+                              
+                                      console.log('Value list cleared.');
+                                    }).appendTo(currentVersionNode);
+    }
+
+    if (window.location.pathname.startsWith('/all')) {
+      button.html('<a href=\'/all/\' style= \'text-decoration: none\'><b>Все топики</b></a>');
+    } else {
+      button.html('<a href=\'/all/\'>Все топики</a>');
+    }
+
+    button.prependTo($table);
+  }
+
+  //
+  function addJumpToTopPanel() {
+    let p = 0;
+    let clicked = false;
+
+    $panel =  $(document.createElement('span')).css({
+                width : '10%',
+                height : '100%',
+                display : 'block',
+                position : 'fixed',
+                top : 0,
+                right : 0,
+                background : '#222222',
+                'z-index' : '999',
+                'cursor' : 'pointer'
+              }).click(function() {
+                  s = p;
+                  p = document.scrollingElement.scrollTop;
+                  clicked = true;
+                  scroll(0, s);
+                  // $(this).hide();
+              }).mouseover(function() {
+                  $(this).css('background', '#4d4d4d');
+              }).mouseout(function() {
+                  $(this).css('background', '#222222');
+              }).appendTo($('body'));
+
+    if (document.scrollingElement.scrollTop == 0) {
+      $panel.hide();
+    }
+
+    $(window).scroll(function() {
+      if (clicked) {
+        clicked = false;
+      } else {
+        p = 0;
+        document.scrollingElement.scrollTop == 0 ? $panel.hide() : $panel.show();
+      }
+    })
+  }
+
+  //
+  function modifyNicknames() {
+    $('.url.fn.nickname').each((_, nickname) => {
+      if (nickname.innerText == 'Zefir4eG') {
+        modifyNickname($(nickname), '#FFC0CB', 'https://image.flaticon.com/icons/png/128/862/862724.png');
+      }
+
+      if (nickname.innerText == 'Нейтральный Джим') {
+        modifyNickname($(nickname), null, 'https://image.flaticon.com/icons/svg/138/138533.svg');
+      }
+    })
+  }
+
+  //
+  function handleComments() {
+    let topicID = 'top' + window.location.pathname.slice(6, -1);
+    let $comments = $('.ps.comment');
+    let ignoreSequence = false;
+    let ignoredOffset = 0;
+
+    $comments.each(function(_, comment) {
+      let $comment = $(comment);
+      let author = $comment.find('.url.fn.nickname').first().attr('title');
+      let offset = Number($comment.css('margin-left').slice(0, -2));
+
+      if (ignoreSequence) {
+        if (offset > ignoredOffset) {
+          $comment.hide();
+        } else {
+          ignoreSequence = false;
+        }
+      } else if (BRP.Ignore.ignoredUsers.includes(author)) {
+        $comment.hide();
+        ignoreSequence = true;
+        ignoredOffset = offset;
+      }
+    });
+
+    $('.reply').click(function() {
+      $btn = $(this);
+      if (!$btn.hasClass('active')) {
+        $btn.addClass('active');
+    
+        $('.addcomment input').click(function() {
+          let trackedTopics = GM_listValues().filter(str => str.startsWith('top'));
+          if (trackedTopics.includes(topicID)) {
+            GM_setValue(topicID, GM_getValue(topicID) + 1);
+          }
+        })
+      }    
+    });
+  }
+
+  /**
+   * Helper function for adding listeners on links to topic
+   */
+  function addLinkListeners(topicNode, numericId, commentCount) {
+    topicNode.find('a').each(function(_, link) {
+      if (link.href.match(numericId) != null) {
+        $(link).click(() => {
+          GM_setValue(topicNode.attr('id'), commentCount);
         });
+      }
+    })
+  }
 
-    }
-}
-
-function modifyNicknames() {
-    for (var node of document.getElementsByClassName("url fn nickname")) {
-            if (node.innerText == "Zefir4eG") {
-                modifyNickname(node, "#FFC0CB", "https://image.flaticon.com/icons/png/128/862/862724.png");
-            }
-
-            if (node.innerText == "Нейтральный Джим") {
-                modifyNickname(node, null, "https://image.flaticon.com/icons/svg/138/138533.svg");
-            }
-    }
-}
-
-function handleComments() {
-    let comments = document.getElementsByClassName("ps comment");
-    let ignoredUsers = GM_listValues().filter(str => str.startsWith("ignore_"))
-                                          .map(str => str.substring(7));
-
-    var comment = comments[0];
-
-    while (comment != undefined && comment != null && comment.className == "ps comment") {
-        if (comment.getElementsByClassName("url fn nickname").length == 0) {
-            console.log(comment);
-        }
-
-        var author = comment.getElementsByClassName("url fn nickname")[0].getAttribute("title");
-        var offset = Number(comment.style.marginLeft.slice(0, -2));
-
-        if (ignoredUsers.includes(author)) {
-            comment.style.display = "none";
-            comment = comment.nextElementSibling
-
-            while (comment != null && Number(comment.style.marginLeft.slice(0, -2)) > offset) {
-                comment.style.display = "none";
-                comment = comment.nextElementSibling;
-            }
-        } else {
-            comment = comment.nextElementSibling;
-        }
-    }
-}
-
-/**
- * Helper function for adding listeners on links to topic
- */
-function addLinkListeners(topicNode, numericId, commentCount) {
-    for (let link of topicNode.getElementsByTagName('a')) {
-        if (link.href.match(numericId) != null) {
-            link.addEventListener("click", function() {
-                GM_setValue(topicNode.id, commentCount);
-            });
-        }
-    }
-}
-
-function handleTopics() {
-    let topics = document.getElementsByClassName("ps hentry blogs");
-    let ignoredUsers = GM_listValues().filter(str => str.startsWith("ignore_"))
-                                      .map(str => str.substring(7));
-
-    let trackedTopics = GM_listValues().filter(str => str.startsWith("top"));
+  //
+  function handleTopics() {
+    let $topics = $('.ps.hentry.blogs');
 
     // Tracking comment numbers of topics up to week old.
     let importanceTreshold = new Date();
     importanceTreshold.setDate(importanceTreshold.getDate() - 7);
 
-    for (let topic of topics) {
-        let author = topic.getElementsByClassName("url fn nickname")[0].getAttribute("title");
-        let datePublished = parseDate(topic.getElementsByClassName("published updated")[0].innerText);
-        let numericId = topic.id.substring(3);
+    $topics.each(function(_, topic) {
+      let $topic = $(topic);
+      let id = $topic.attr('id');
+      let author = $topic.find('.url.fn.nickname').attr('title');
+      let datePublished = BRP.Dates.parseDate($topic.find('.published.updated').text());
+      let numericId = id.substring(3);
 
-        let entryInfoNode = topic.getElementsByClassName("panel entry-info")[0]
-        let commentCountStr = entryInfoNode.lastElementChild.previousSibling.nodeValue;
-        let commentCount = parseInt(commentCountStr.substring(2, commentCountStr.length - 1));
+      let $entryInfoNode = $topic.find('.panel.entry-info');
+      let commentCountStr = $entryInfoNode[0].lastElementChild.previousSibling.nodeValue;
+      let commentCount = parseInt(commentCountStr.substring(2, commentCountStr.length - 1));
 
-        let entryTitleNode = topic.getElementsByClassName("entry-title")[0];
+      let $entryTitleNode = $topic.find('.entry-title');
+      let trackedTopics = GM_listValues().filter(str => str.startsWith('top'));
 
-        if (trackedTopics.includes(topic.id)) {
-            if (datePublished < importanceTreshold) {
-                GM_deleteValue(topic.id);
-            } else if (GM_getValue(topic.id) < commentCount) {
+      if (trackedTopics.includes(id)) {
+        if (datePublished < importanceTreshold) {
+          GM_deleteValue(id);
+        } else if (GM_getValue(id) < commentCount) {
+          // Add amount of new comments
+          $(document.createElement('b')).text('+' + (commentCount - GM_getValue(id)))
+                                        .css({
+                                          color : BRP.GREEN,
+                                          'margin-left' : '4px',
+                                          'font-size' : 'small'
+                                        }).mouseover(function() {
+                                          $(this).hide();
+                                          GM_setValue(id, commentCount);
+                                        }).insertBefore($entryInfoNode.children().last());
 
-                // Add amount of new comments
-                let newCommentCount = document.createElement("b");
-                newCommentCount.innerText = "+" + (commentCount - GM_getValue(topic.id));
-                newCommentCount.style.color = GREEN;
-                newCommentCount.style.marginLeft = "4px";
-                newCommentCount.style.fontSize = "small";
-
-                newCommentCount.addEventListener("mouseover", function() {
-                    this.style.display = "none";
-                    GM_setValue(topic.id, commentCount);
-                });
-
-                entryInfoNode.insertBefore(newCommentCount, entryInfoNode.lastElementChild);
-                addLinkListeners(topic, numericId, commentCount);
-            }
-        } else if (datePublished > importanceTreshold) {
-            let newLabel = document.createElement("b");
-            newLabel.innerText = "New!";
-            newLabel.style.color = GREEN;
-            newLabel.style.marginLeft = "7px";
-            newLabel.style.fontSize = "medium";
-
-            newLabel.addEventListener("mouseover", function() {
-               this.style.display = "none";
-               GM_setValue(topic.id, commentCount); // save current amount of comments
-            });
-
-            entryTitleNode.appendChild(newLabel);
-            addLinkListeners(topic, numericId, commentCount);
+          addLinkListeners($(topic), numericId, commentCount);
+        }
+      } else if (datePublished > importanceTreshold) {
+        if (author == BRP.User.nickname) {
+          GM_setValue(id, commentCount);
+        } else {
+          $(document.createElement('b')).text('New!')
+                                        .css({
+                                          color : BRP.GREEN,
+                                          'margin-left' : '7px',
+                                          'font-size' : 'medium'
+                                        }).mouseover(function() {
+                                          $(this).hide()
+                                          GM_setValue(id, commentCount); // save current amount of comments
+                                        }).appendTo($entryTitleNode);
         }
 
-        if (ignoredUsers.includes(author)) {
-            topic.style.display = "none";
-        }
-    }
-}
+          addLinkListeners($(topic), numericId, commentCount);
+      }
 
-function modifyNickname(node, color, iconSrc) {
-    let icon = document.createElement("img");
+      if (BRP.Ignore.ignoredUsers.includes(author)) {
+        $topic.hide();
+      }
+    })
+  }
 
-    icon.setAttribute("src", iconSrc);
-    icon.setAttribute("width", "12px");
-    icon.setAttribute("height", "auto");
-    icon.style.marginBottom = "-1px";
-    icon.style.marginRight = "5px";
+  //
+  function modifyNickname(node, color, iconSrc) {
+    $(document.createElement('img')).attr({
+      src : iconSrc,
+      width : '12px',
+      heigth : 'auto'
+    }).css({   
+      'margin-bottom' : '-1px',
+      'margin-right'  : '5px'
+    }).prependTo($(node))
 
-    node.style.marginLeft = "-73px";
-    node.insertBefore(icon, node.firstChild);
+    node.css({
+      'margin-left' : '-73px'
+    });
 
     if (color != null) {
-        node.style.color = color;
+      node.css('color', color);
     }
-}
+  }
 
-function emotes(node) {
-    node.innerHTML = node.innerHTML.replace(/(^|\s)pepega($|\s)/g, " <img src=\"https://cdn.frankerfacez.com/emoticon/243789/1\"> ");
-    node.innerHTML = node.innerHTML.replace(/(^|\s)peepoClown($|\s)/g, " <img src=\"https://cdn.frankerfacez.com/emoticon/318914/1\"> ");
-    node.innerHTML = node.innerHTML.replace(/(^|\s)zeroClown($|\s)/g, "<img src=\"https://i.postimg.cc/cJ5qkH4w/zero-Clown.png\" width=\"32px\">");
+  function emotes(node) {
+    node.innerHTML = node.innerHTML.replace(/(^|\s)pepega($|\s)/g, ' <img src="https://cdn.frankerfacez.com/emoticon/243789/1"> ');
+    node.innerHTML = node.innerHTML.replace(/(^|\s)peepoClown($|\s)/g, ' <img src="https://cdn.frankerfacez.com/emoticon/318914/1"> ');
+    node.innerHTML = node.innerHTML.replace(/(^|\s)zeroClown($|\s)/g, '<img src="https://i.postimg.cc/cJ5qkH4w/zero-Clown.png" width="32px">');
+  }
 
-    return node;
-}
-
-function words(node) {
-    words = node.innerHTML.split(".")
-                          .map(sentence => sentence.split(",")
-                                                   .map(words => words.split(" ")
-                                                                      .map(word => (word.hashCode() == 1645808550 ||
-                                                                                    word.hashCode() == -984505466 ||
-                                                                                    word.hashCode() == -984501626 ||
-                                                                                    word.hashCode() == 1645812390 ||
-                                                                                    word.hashCode() == 1271192267) ? "<b style=\"color:" + randomColor() + "\">петух</b>" : word)
-                                                                      .join(" "))
-                                                   .join(","))
-                          .join(".");
+  function words(node) {
+    let words = node.innerHTML.split('.')
+                          .map(sentence => sentence.split(',')
+                                                   .map(words => words.split(' ')
+                                                                      .map(word => specialWords.has(word.hashCode()) ? '<b style="color:' + randomColor() + '">петух</b>' : word)
+                                                                      .join(' '))
+                                                   .join(','))
+                          .join('.');
 
     node.innerHTML = words;
+  }
 
-    return node;
-}
+  BRP.User.detectUser();
+  modifyNavigationBar();
 
-detectUser();
-modifyNavigationBar();
-addJumpToTopPanel();
-modifyNicknames();
+  if (!BRP.User.banned) {
+    addJumpToTopPanel();
+    modifyNicknames();
 
-wrapRelevantText();
+    wrapRelevantText();
 
-let text = Array.from(document.getElementsByClassName("relevant-text"))
-                .map(words)
-                .map(emotes);
+    $('.relevant-text').each(function(_, node) {
+      words(node);
+      emotes(node);
+    })
 
-if (window.location.href.match(/https:\/\/rupark.com\/user\/.*/) != null) {
-    let nickname = document.getElementsByClassName("item vcard fn nickname")
+    console.log(GM_listValues());
 
-    if (nickname.length != 0) {
-        if (nickname[0].innerText == USERNAME) {
-            addIgnoredUsersTab();
-        } else {
-            addIgnoreButton(nickname[0].innerText);
-        }
+    if (isURL('/user/')) {
+      console.log('user page')
+      let page_owner = $('.item.vcard.fn.nickname').first().text()
+
+      if (page_owner == BRP.User.nickname) {
+        BRP.Ignore.addIgnoredUsersTab();
+      } else {
+        BRP.Ignore.addIgnoreButton(page_owner);
+      }
+    } else if (isURL('/blog') ||
+               isURL('/all') ||
+               isURL('/news') ||
+               isURL('/topics') ||
+               isURL('/clans') ||
+               isURL('/personal') ||
+               isURL('/sandbox') ||
+               isURL('/flood') ||
+               window.location.pathname.match(/^\/[0-9]*$/) != null) {
+                 console.log('page with topics')
+                 handleTopics();
+    } else if (isURL('/topic')) {
+      console.log('inside the topic')
+      handleComments();
     }
-} else if (window.location.href.match(/https:\/\/rupark.com\/topic[0-9]+/) != null) {
-    handleComments();
-} else if (window.location.href.match(/https:\/\/rupark.com\/blog.*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/[0-9]*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/all.*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/news.*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/topics.*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/clans.*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/personal.*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/sandbox.*/) != null ||
-           window.location.href.match(/https:\/\/rupark.com\/flood.*/) != null) {
-    handleTopics();
-}
+  }
+});
