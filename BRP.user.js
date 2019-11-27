@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better Rupark
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.6.1
 // @description  RP forum extensions
 // @author       Wiblz
 // @include      http*://rupark.com/*
@@ -34,7 +34,7 @@ const BRP = (function() {
 
   const BRP = {};
 
-  BRP.VERSION_STRING = 'v0.6';
+  BRP.VERSION_STRING = 'v0.6.1';
   BRP.WHATS_NEW_URL = 'https://rupark.com/topic1211680/';
   BRP.VERSION_COLOR = '#ec4583';
   BRP.DEBUG_MODE = false;
