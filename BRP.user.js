@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better Rupark
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.7
 // @description  RP forum extensions
 // @author       Wiblz
 // @include      http*://rupark.com/*
@@ -34,15 +34,16 @@ const BRP = (function() {
 
   const BRP = {};
 
-  BRP.VERSION_STRING = 'v0.6';
-  BRP.WHATS_NEW_URL = 'https://rupark.com/topic1211680/';
-  BRP.VERSION_COLOR = '#ec4583';
+  BRP.VERSION_STRING = 'v0.7 dev';
+  BRP.WHATS_NEW_URL = 'https://rupark.com/topic1212351/';
+  BRP.VERSION_COLOR = '#1930d0';
   BRP.DEBUG_MODE = false;
 
   BRP.GREEN = '#0ed217';
   BRP.RED = '#8a2424';
   BRP.CURRENT_YEAR = '2019';
 
+  BRP.paginationEnabled = false;
 
   BRP.User = {};
 
@@ -154,7 +155,6 @@ const BRP = (function() {
   BRP.Ignore.unignore = function(button) {
     let row = button.parent().parent();
     let nickname = row.find('.userNickname').first().text();
-    console.log(row, nickname);
 
     GM_deleteValue('ignore_' + nickname);
     this.ignoredUsers = this.ignoredUsers.filter(e => e !== nickname);
@@ -206,12 +206,136 @@ const BRP = (function() {
                                                             .text('Убрать из игнора')
                                                             .css('cursor', 'pointer')
                                                             .click(function() {
-                                                              // console.log($(this).parent().parent());
                                                               BRP.Ignore.unignore($(this));
                                                             })
                                                             .appendTo($buttonColumn);
       }
     });
+  }
+
+  BRP.ImageResize = {
+    hovered: false,
+    pressed: false,
+    dragged: false,
+    distance: 0,
+
+    initialX: 0,
+    initialY: 0,
+
+    multiplier: 1.0,
+    dragged: 0,
+    width: 0,
+    height: 0,
+
+    setListeners: function() {
+      let $images = $('.txt').find('img');
+      // let $images = $('.txt.content').find('img');
+
+      let $win = $(window);
+      
+      let $container = $(document.createElement('div')).css({
+          'position' : 'fixed',
+          'display' : 'block',
+          'background' : 'rgb(85, 85, 85)',
+          'padding' : '8px',
+          'z-index' : '999'
+        }).addClass('fullscreen-container')
+          .mouseover(() => {
+            this.hovered = true;
+        }).mouseout(() => {
+            this.hovered = false;
+        }).mousedown((e) => {
+          if (this.hovered) {
+            this.initialX = e.clientX;
+            this.initialY = e.clientY;
+
+            this.dragged = true;
+            this.distance = 0;
+
+            e.preventDefault();
+          }
+        }).mouseup(() => {
+            if (this.distance <= 3) {
+              $container.hide();
+              $container.html('');
+            }
+
+            this.dragged = false;
+        }).appendTo('body')
+          .hide();
+
+      $images.css('cursor', 'pointer')
+            .click(function(e) {
+              $container.css({
+                'width' : this.width,
+                'height' : this.height,
+                'left' : ((window.innerWidth - this.width) / 2),
+                'top' : ((window.innerHeight - this.height) / 2)
+              }).show();
+              
+              BRP.ImageResize.width = this.width
+              BRP.ImageResize.height = this.height
+
+              $(document.createElement('img')).attr('src', this.src)
+                                              .css({
+                                                'width' : '100%',
+                                                'height' : '100%'
+                                              })
+                                              .appendTo($container);
+
+              e.preventDefault();
+      });
+
+      $container[0].addEventListener('wheel', (e) => {
+        if (this.hovered) {
+          let x_ratio = (e.clientX - parseFloat($container[0].style.left)) / this.width / this.multiplier
+          let y_ratio = (e.clientY - parseFloat($container[0].style.top)) / this.height / this.multiplier
+
+          if (e.deltaY > 0 && this.multiplier > 0.4) {
+            this.multiplier -= 0.3;
+          } else if (e.deltaY < 0 && this.multiplier < 10.0) {
+            this.multiplier += 0.3;
+          }
+
+          $container.css({
+            'width' : this.width * this.multiplier,
+            'height' : this.height * this.multiplier,
+
+            'left' : e.clientX - x_ratio * this.width * this.multiplier,
+            'top' : e.clientY - y_ratio * this.height * this.multiplier
+          });
+
+          e.preventDefault();
+        }
+      });
+
+      $win.mousemove((e) => {
+        if (this.dragged) {
+          let deltaX = e.clientX - this.initialX;
+          let deltaY = e.clientY - this.initialY;
+
+          this.distance += (Math.abs(deltaX) + Math.abs(deltaY));
+
+          this.initialX = e.clientX;
+          this.initialY = e.clientY;
+
+          let el_top = parseInt($container.css('top'));
+          let el_left = parseInt($container.css('left'));
+
+          $container.css({
+              top: (el_top + deltaY) + 'px',
+              left: (el_left + deltaX) + 'px'
+          });
+        }
+      });
+
+      $win.mousedown(() => {
+        if (!BRP.ImageResize.hovered) {
+          $container.hide();
+          $container.html('');
+        }
+      });
+    }
   }
 
   return BRP;
@@ -333,7 +457,7 @@ $(() => {
                 top : 0,
                 right : 0,
                 background : '#222222',
-                'z-index' : '999',
+                'z-index' : '998',
                 'cursor' : 'pointer'
               }).click(function() {
                   s = p;
@@ -412,6 +536,8 @@ $(() => {
         })
       }    
     });
+
+    BRP.ImageResize.setListeners();
   }
 
   /**
@@ -495,7 +621,7 @@ $(() => {
     $(document.createElement('img')).attr({
       src : iconSrc,
       width : '12px',
-      heigth : 'auto'
+      height : 'auto'
     }).css({   
       'margin-bottom' : '-1px',
       'margin-right'  : '5px'
@@ -563,6 +689,7 @@ $(() => {
                isURL('/flood') ||
                window.location.pathname.match(/^\/[0-9]*$/) != null) {
                  console.log('page with topics')
+                 BRP.paginationEnabled = true;
                  handleTopics();
     } else if (isURL('/topic')) {
       console.log('inside the topic')
