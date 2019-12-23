@@ -34,7 +34,7 @@ const BRP = (function() {
 
   const BRP = {};
 
-  BRP.VERSION_STRING = 'v0.7 dev';
+  BRP.VERSION_STRING = 'v0.7.1';
   BRP.WHATS_NEW_URL = 'https://rupark.com/topic1212351/';
   BRP.VERSION_COLOR = '#1930d0';
   BRP.DEBUG_MODE = false;
