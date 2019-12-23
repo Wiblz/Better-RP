@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better Rupark
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      0.7.1
 // @description  RP forum extensions
 // @author       Wiblz
 // @include      http*://rupark.com/*
