@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better Rupark
 // @namespace    http://tampermonkey.net/
-// @version      0.7.1
+// @version      0.7.2
 // @description  RP forum extensions
 // @author       Wiblz
 // @include      http*://rupark.com/*
@@ -34,14 +34,14 @@ const BRP = (function() {
 
   const BRP = {};
 
-  BRP.VERSION_STRING = 'v0.7.1';
+  BRP.VERSION_STRING = 'v0.7.2';
   BRP.WHATS_NEW_URL = 'https://rupark.com/topic1212351/';
   BRP.VERSION_COLOR = '#1930d0';
   BRP.DEBUG_MODE = false;
 
   BRP.GREEN = '#0ed217';
   BRP.RED = '#8a2424';
-  BRP.CURRENT_YEAR = '2019';
+  BRP.CURRENT_YEAR = '2020';
 
   BRP.paginationEnabled = false;
 
