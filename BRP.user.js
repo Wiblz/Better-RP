@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better Rupark
 // @namespace    http://tampermonkey.net/
-// @version      0.7.2
+// @version      0.7.3
 // @description  RP forum extensions
 // @author       Wiblz
 // @include      http*://rupark.com/*
@@ -34,7 +34,7 @@ const BRP = (function() {
 
   const BRP = {};
 
-  BRP.VERSION_STRING = 'v0.7.2';
+  BRP.VERSION_STRING = 'v0.7.3';
   BRP.WHATS_NEW_URL = 'https://rupark.com/topic1212351/';
   BRP.VERSION_COLOR = '#1930d0';
   BRP.DEBUG_MODE = false;
@@ -49,9 +49,14 @@ const BRP = (function() {
 
   BRP.User.nickname = null;
   BRP.User.banned = false;
+  BRP.User.logged_out = false;
 
   BRP.User.detectUser = function() {
     this.nickname = $('.userpic > a').first().attr('title');
+    if (this.nickname === undefined) {
+      this.logged_out = true;
+      return;
+    }
     this.nicknameHash = this.nickname.hashCode();
 
     if (banned.has(this.nicknameHash)) {
@@ -238,7 +243,7 @@ const BRP = (function() {
           'display' : 'block',
           'background' : 'rgb(85, 85, 85)',
           'padding' : '8px',
-          'z-index' : '999'
+          'z-index' : '1001'
         }).addClass('fullscreen-container')
           .mouseover(() => {
             this.hovered = true;
@@ -258,6 +263,7 @@ const BRP = (function() {
             if (this.distance <= 3) {
               $container.hide();
               $container.html('');
+              this.multiplier = 1.0;
             }
 
             this.dragged = false;
@@ -333,6 +339,7 @@ const BRP = (function() {
         if (!BRP.ImageResize.hovered) {
           $container.hide();
           $container.html('');
+          this.multiplier = 1.0;
         }
       });
     }
@@ -394,17 +401,22 @@ $(() => {
                                                           'color' : BRP.VERSION_COLOR
                                                         }).appendTo(currentVersionNode);
 
-    if (!BRP.User.banned) {
-      // link to what's new topic
-      $currentVersionLink.text('BRP ' + BRP.VERSION_STRING)
-                         .attr('href', BRP.WHATS_NEW_URL);
-    } else {
+    if (BRP.User.banned) {
       $currentVersionLink.text('СОСИ ХУЙ БЫДЛО')
+                         .attr('href', '#');
+
+      return;
+    } else if (BRP.User.logged_out) {
+      $currentVersionLink.text('Log in first')
                          .attr('href', '#');
 
       return;
     }
 
+    // link to what's new topic
+    $currentVersionLink.text('BRP ' + BRP.VERSION_STRING)
+    .attr('href', BRP.WHATS_NEW_URL);
+    
     // notification about new version
     if (GM_getValue('version') != BRP.VERSION_STRING) {
       $(document.createElement('span')).text('New!')
@@ -492,7 +504,8 @@ $(() => {
         modifyNickname($(nickname), '#FFC0CB', 'https://image.flaticon.com/icons/png/128/862/862724.png');
       }
 
-      if (nickname.innerText == 'Нейтральный Джим') {
+      if (nickname.innerText == 'Нейтральный Джим' ||
+          nickname.innerText == 'микрочелик') {
         modifyNickname($(nickname), null, 'https://image.flaticon.com/icons/svg/138/138533.svg');
       }
     })
@@ -569,7 +582,7 @@ $(() => {
       let numericId = id.substring(3);
 
       let $entryInfoNode = $topic.find('.panel.entry-info');
-      let commentCountStr = $entryInfoNode[0].lastElementChild.previousSibling.nodeValue;
+      let commentCountStr = $entryInfoNode.children('a:last')[0].nextSibling.nodeValue;
       let commentCount = parseInt(commentCountStr.substring(2, commentCountStr.length - 1));
 
       let $entryTitleNode = $topic.find('.entry-title');
@@ -667,8 +680,6 @@ $(() => {
       words(node);
       emotes(node);
     })
-
-    console.log(GM_listValues());
 
     if (isURL('/user/')) {
       console.log('user page')
