@@ -52,8 +52,8 @@ const BRP = (function() {
   BRP.User.logged_out = false;
 
   BRP.User.detectUser = function() {
-    this.nickname = $('.userpic > a').first().attr('title');
-    if (this.nickname === undefined) {
+    this.nickname = $('.personal .fn.nickname.url b').text();
+    if (this.nickname === "") {
       this.logged_out = true;
       return;
     }
@@ -145,7 +145,7 @@ const BRP = (function() {
     ignoreButton.click(function() {
       if (ignoreButton.hasClass('unignore')) {
         GM_deleteValue('ignore_' + nickname);
-        BRP.Ignore.ignoredUsers = BRP.Ignore.ignoredUsers.filter(e => e !== nickname);       
+        BRP.Ignore.ignoredUsers = BRP.Ignore.ignoredUsers.filter(e => e !== nickname);
         ignoreButton.text('Добавить в игнор');
       } else {
         GM_setValue('ignore_' + nickname, 0);
@@ -237,7 +237,7 @@ const BRP = (function() {
       // let $images = $('.txt.content').find('img');
 
       let $win = $(window);
-      
+
       let $container = $(document.createElement('div')).css({
           'position' : 'fixed',
           'display' : 'block',
@@ -278,7 +278,7 @@ const BRP = (function() {
                 'left' : ((window.innerWidth - this.width) / 2),
                 'top' : ((window.innerHeight - this.height) / 2)
               }).show();
-              
+
               BRP.ImageResize.width = this.width
               BRP.ImageResize.height = this.height
 
@@ -364,7 +364,7 @@ $(() => {
     $('.txt').each(function(_, node) {
       let nodes = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, null);
       let textNode;
-      
+
       while (textNode = nodes.nextNode()) {
         let parent = textNode.parentNode;
 
@@ -416,7 +416,7 @@ $(() => {
     // link to what's new topic
     $currentVersionLink.text('BRP ' + BRP.VERSION_STRING)
     .attr('href', BRP.WHATS_NEW_URL);
-    
+
     // notification about new version
     if (GM_getValue('version') != BRP.VERSION_STRING) {
       $(document.createElement('span')).text('New!')
@@ -442,7 +442,7 @@ $(() => {
                                       for (let value of GM_listValues()) {
                                         GM_deleteValue(value);
                                       }
-                              
+
                                       console.log('Value list cleared.');
                                     }).appendTo(currentVersionNode);
     }
@@ -540,14 +540,14 @@ $(() => {
       $btn = $(this);
       if (!$btn.hasClass('active')) {
         $btn.addClass('active');
-    
+
         $('.addcomment input').click(function() {
           let trackedTopics = GM_listValues().filter(str => str.startsWith('top'));
           if (trackedTopics.includes(topicID)) {
             GM_setValue(topicID, GM_getValue(topicID) + 1);
           }
         })
-      }    
+      }
     });
 
     BRP.ImageResize.setListeners();
@@ -635,7 +635,7 @@ $(() => {
       src : iconSrc,
       width : '12px',
       height : 'auto'
-    }).css({   
+    }).css({
       'margin-bottom' : '-1px',
       'margin-right'  : '5px'
     }).prependTo($(node))
