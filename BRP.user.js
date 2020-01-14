@@ -570,6 +570,9 @@ $(() => {
   function handleTopics() {
     let $topics = $('.ps.hentry.blogs');
 
+    // Shift admin panels (if present) to make amount of new comments visiblw
+    $('.admin-panel').css('margin-left', '30px');
+
     // Tracking comment numbers of topics up to week old.
     let importanceTreshold = new Date();
     importanceTreshold.setDate(importanceTreshold.getDate() - 7);
@@ -640,9 +643,7 @@ $(() => {
       'margin-right'  : '5px'
     }).prependTo($(node))
 
-    node.css({
-      'margin-left' : '-73px'
-    });
+    node.css('margin-left', '-73px');
 
     if (color != null) {
       node.css('color', color);
