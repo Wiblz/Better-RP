@@ -40,7 +40,7 @@
 
     const BRP = {};
 
-    BRP.VERSION_STRING = 'v0.8';
+    BRP.VERSION_STRING = 'v0.8.1';
     BRP.WHATS_NEW_URL = 'https://rupark.com/topic1217340/';
     BRP.ASSETS_URL = 'https://raw.githubusercontent.com/Wiblz/Better-RP/master/assets';
     BRP.VERSION_COLOR = '#b90000';
