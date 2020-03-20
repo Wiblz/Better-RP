@@ -645,7 +645,7 @@
       let words = node.innerHTML.split('.')
                             .map(sentence => sentence.split(',')
                                                     .map(words => words.split(' ')
-                                                                        .map(word => has(specialWords, word.hashCode) ? `<b style="color:${randomColor()}">${specialWords[word.hashCode()]}</b>` : word)
+                                                                        .map(word => has(specialWords, word.hashCode()) ? `<b style="color:${randomColor()}">${specialWords[word.hashCode()]}</b>` : word)
                                                                         .join(' '))
                                                     .join(','))
                             .join('.');
