@@ -1,7 +1,3 @@
-Object.prototype.has = function(key) {
-    return hasOwnProperty.call(this, key);
-}
-
 const banned = new Set([
     1041501730, -1687959222, 2048417838,
     1189741850, -2055281740, 535378983,
