@@ -1,7 +1,7 @@
   // ==UserScript==
   // @name         Better Rupark
   // @namespace    http://tampermonkey.net/
-  // @version      0.8
+  // @version      0.8.1
   // @description  RP forum extensions
   // @author       Wiblz
   // @include      http*://rupark.com/*
@@ -844,22 +844,8 @@
               }
 
               $this.remove();
-            } else if (has(sabers.achievements, parts[0])) {
-              count = $this.find('b').last().text();
-              sabers.achievements[parts[0]].count = count == '' ? 1 : parseInt(count.slice(0, -4));
-
-              $this.remove();
-            } else if (has(medals.achievements, parts[0])) {
-              count = $this.find('b').last().text();
-              medals.achievements[parts[0]].count = count == '' ? 1 : parseInt(count.slice(0, -4));
-
-              $this.remove();
             } else if (has(daily_achievements, parts[0])) {
               daily_achievements[parts[0]].hidden = false;
-
-              $this.remove();
-            } else if (has(balaclavas.achievements, parts[0])) {
-              balaclavas.achievements[parts[0]].count = 1;
 
               $this.remove();
             } else {
