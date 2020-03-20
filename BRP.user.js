@@ -1,7 +1,7 @@
   // ==UserScript==
   // @name         Better Rupark
   // @namespace    http://tampermonkey.net/
-  // @version      0.7.4
+  // @version      0.8
   // @description  RP forum extensions
   // @author       Wiblz
   // @include      http*://rupark.com/*
@@ -16,6 +16,7 @@
   // @require      https://code.jquery.com/jquery-3.4.1.min.js
   // @require      https://github.com/Wiblz/Better-RP/raw/master/blacklist.js
   // @require      https://github.com/Wiblz/Better-RP/raw/master/achievements.js
+  // @require      https://github.com/Wiblz/Better-RP/raw/master/tooltip.js
   // ==/UserScript==
 
   function has(object, key) {
@@ -39,10 +40,10 @@
 
     const BRP = {};
 
-    BRP.VERSION_STRING = 'v0.7.4';
-    BRP.WHATS_NEW_URL = 'https://rupark.com/topic1212351/';
+    BRP.VERSION_STRING = 'v0.8';
+    BRP.WHATS_NEW_URL = 'https://rupark.com/topic1217340/';
     BRP.ASSETS_URL = 'https://raw.githubusercontent.com/Wiblz/Better-RP/master/assets';
-    BRP.VERSION_COLOR = '#1930d0';
+    BRP.VERSION_COLOR = '#b90000';
     BRP.DEBUG_MODE = false;
 
     BRP.GREEN = '#0ed217';
@@ -644,7 +645,7 @@
       let words = node.innerHTML.split('.')
                             .map(sentence => sentence.split(',')
                                                     .map(words => words.split(' ')
-                                                                        .map(word => specialWords.has(word.hashCode()) ? '<b style="color:' + randomColor() + '">петух</b>' : word)
+                                                                        .map(word => specialWords.has(word.hashCode()) ? `<b style="color:${randomColor()}">${specialWords[word.hashCode()]}</b>` : word)
                                                                         .join(' '))
                                                     .join(','))
                             .join('.');
