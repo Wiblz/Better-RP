@@ -14,7 +14,6 @@ class Achievement {
   static locked_description_color = '#f18c8c';
 
   static alternative_colors = {
-    // 0 : '#444444',
     0 : '#929292',
     1 : '#ffffff',
     2 : '#399c4c',
@@ -85,7 +84,8 @@ class Skill extends Achievement {
     'Энергетическое оружие' : 'Energy',
     'Ментальное оружие' : 'Mental',
     'Контактный бой' : 'Contact',
-    'Медицина' : 'Medicine'
+    'Медицина' : 'Medicine',
+    'Навык божественной силы' : 'Holy'
   };
 
   handleSubtitle(subtitle) {
