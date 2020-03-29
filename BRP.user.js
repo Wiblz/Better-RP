@@ -1,7 +1,7 @@
   // ==UserScript==
   // @name         Better Rupark
   // @namespace    http://tampermonkey.net/
-  // @version      0.8.1
+  // @version      0.8.2
   // @description  RP forum extensions
   // @author       Wiblz
   // @include      http*://rupark.com/*
@@ -40,7 +40,7 @@
 
     const BRP = {};
 
-    BRP.VERSION_STRING = 'v0.8.1';
+    BRP.VERSION_STRING = 'v0.8.2';
     BRP.WHATS_NEW_URL = 'https://rupark.com/topic1217340/';
     BRP.ASSETS_URL = 'https://raw.githubusercontent.com/Wiblz/Better-RP/master/assets';
     BRP.VERSION_COLOR = '#b90000';
@@ -681,7 +681,8 @@
         'Энергетическое оружие',
         'Ментальное оружие',
         'Контактный бой',
-        'Медицина'
+        'Медицина',
+        'Навык божественной силы'
       ]
 
       for (title of skill_titles) {
@@ -873,6 +874,7 @@
           const $skill_grid = generateGrid(5, 3).insertAfter($('.tabbar'));
           const $extras_grid = generateGrid(5, 1).insertAfter($skill_grid);
           const $daily_achievements_grid = generateGrid(2, 1).insertAfter($extras_grid);
+
           // const $medal_grid = generateGrid(3, 1).insertAfter($daily_achievements_grid);
           // const $balaclavas_grid = generateGrid(7, 1, {gap: '4px', dimension: '88px'}).insertAfter($medal_grid);
           // const $saber_grid = generateGrid(5, 1).insertAfter($balaclavas_grid);
