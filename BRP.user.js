@@ -1,7 +1,7 @@
   // ==UserScript==
   // @name         Better Rupark
   // @namespace    http://tampermonkey.net/
-  // @version      0.8.2
+  // @version      0.8.3
   // @description  RP forum extensions
   // @author       Wiblz
   // @include      http*://rupark.com/*
@@ -40,7 +40,7 @@
 
     const BRP = {};
 
-    BRP.VERSION_STRING = 'v0.8.2';
+    BRP.VERSION_STRING = 'v0.8.3';
     BRP.WHATS_NEW_URL = 'https://rupark.com/topic1217340/';
     BRP.ASSETS_URL = 'https://raw.githubusercontent.com/Wiblz/Better-RP/master/assets';
     BRP.VERSION_COLOR = '#b90000';
@@ -710,7 +710,7 @@
           'Котолов' : 2,
           'Мартовский ужас' : 3,
           'Хозяин зоопарка' : 4,
-          '???' : 5
+          'Одинокая женщина' : 5
         }, () => `Выдаётся за сбор ${extra_skills['Сбор котов'].count} котэ на улицах рупарка.`,
         {
           1 : {count : 1, reward : 10, accumulated_reward : 10},
